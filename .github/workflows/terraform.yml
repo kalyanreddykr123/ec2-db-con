@@ -106,7 +106,9 @@ jobs:
         RDS_PASSWORD="Roadtrip369"  # Store in secrets for better security
 
         ssh -i private-key.pem -o StrictHostKeyChecking=no ubuntu@$EC2_PUBLIC_IP << EOF
+          PGPASSWORD=$RDS_PASSWORD psql -h $RDS_ENDPOINT -U $RDS_USER -d $RDS_DBNAME -p 5432 -c "SELECT version();"
           PGPASSWORD=$RDS_PASSWORD psql -h $RDS_ENDPOINT -U $RDS_USER -d $RDS_DBNAME -p 5432 -c "SELECT now();"
+          PGPASSWORD=$RDS_PASSWORD psql -h $RDS_ENDPOINT -U $RDS_USER -d $RDS_DBNAME -p 5432 -c "\l"
         EOF
 
         # Clean up the private key after use
