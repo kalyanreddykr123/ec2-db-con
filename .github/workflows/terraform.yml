@@ -47,6 +47,12 @@ jobs:
         echo "::set-output name=instance_id::$INSTANCE_ID"
         echo "::set-output name=ami_id::$AMI_ID"
 
+   # Step 2: Wait for EC2 instance to be running
+    - name: Wait for EC2 instance to be running
+      run: |
+        # Get the instance ID from the previous step's output
+        INSTANCE_ID="${{ steps.launch-instance.outputs.instance_id }}"
+
     - name: Wait for EC2 instance to be running
       run: |
         INSTANCE_STATE=$(aws ec2 describe-instances \
