@@ -55,7 +55,7 @@ jobs:
 
         while [[ "$INSTANCE_STATE" != "running" ]]; do
           echo "Waiting for EC2 instance to be running..."
-          sleep 10
+          sleep 90
           INSTANCE_STATE=$(aws ec2 describe-instances \
             --instance-ids $INSTANCE_ID \
             --query 'Reservations[0].Instances[0].State.Name' \
