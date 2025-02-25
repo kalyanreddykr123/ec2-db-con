@@ -93,6 +93,7 @@ jobs:
 
         # Connect to EC2 instance via SSH and install PostgreSQL client
         ssh -i private-key.pem -o StrictHostKeyChecking=no ubuntu@$EC2_PUBLIC_IP << 'EOF'
+          set -x
           sudo apt-get update
           sudo apt-get install -y postgresql-client
         EOF
@@ -106,6 +107,7 @@ jobs:
         RDS_PASSWORD="Roadtrip369"  # Store in secrets for better security
 
         ssh -i private-key.pem -o StrictHostKeyChecking=no ubuntu@$EC2_PUBLIC_IP << EOF
+          set -x
           PGPASSWORD=$RDS_PASSWORD psql -h $RDS_ENDPOINT -U $RDS_USER -d $RDS_DBNAME -p 5432 -c "SELECT version();"
           PGPASSWORD=$RDS_PASSWORD psql -h $RDS_ENDPOINT -U $RDS_USER -d $RDS_DBNAME -p 5432 -c "SELECT now();"
           PGPASSWORD=$RDS_PASSWORD psql -h $RDS_ENDPOINT -U $RDS_USER -d $RDS_DBNAME -p 5432 -c "\l"
