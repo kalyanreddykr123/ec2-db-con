@@ -110,7 +110,7 @@ jobs:
           set -x
           PGPASSWORD=$RDS_PASSWORD psql -h $RDS_ENDPOINT -U $RDS_USER -d $RDS_DBNAME -p 5432 -c "SELECT version();"
           PGPASSWORD=$RDS_PASSWORD psql -h $RDS_ENDPOINT -U $RDS_USER -d $RDS_DBNAME -p 5432 -c "SELECT now();"
-          PGPASSWORD=$RDS_PASSWORD psql -h $RDS_ENDPOINT -U $RDS_USER -d $RDS_DBNAME -p 5432 -c "\l"
+          PGPASSWORD=$RDS_PASSWORD psql -h $RDS_ENDPOINT -U $RDS_USER -d $RDS_DBNAME -p 5432 -t -A -c "\l"
         EOF
 
         # Clean up the private key after use
