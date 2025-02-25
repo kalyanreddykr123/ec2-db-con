@@ -3,34 +3,35 @@ name: AWS EC2 Instance Setup and Connect to RDS
 on:
   push:
     branches:
-      - main  # You can change this to the branch you want the workflow to run on
+      - main  # Trigger on main branch push
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
+    # Step 1: Checkout repository
     - name: Checkout repository
       uses: actions/checkout@v2
 
+    # Step 2: Set up AWS CLI
     - name: Set up AWS CLI
       uses: aws-actions/configure-aws-credentials@v1
       with:
-        # aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        # aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        # aws-region: us-east-1  # Change to your region
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ap-south-1  # Change to your region
 
+    # Step 3: Launch EC2 instance
     - name: Launch EC2 instance
+      id: launch-instance
       run: |
         # Define EC2 instance parameters
-        INSTANCE_TYPE="t2.micro"  # Change as needed
-        KEY_NAME="awst7545-mumbai"  # Change to your key pair name
-        SECURITY_GROUP="sg-014d30ace7995febb"  # Change to your security group
-        AMI_ID="ami-00bb6a80f01f03502"  # Example Ubuntu AMI, change if needed
-        SUBNET_ID="subnet-0f2c630e7eee03e9f"  # Change to your subnet ID
+        INSTANCE_TYPE="t2.micro"  # Example type
+        KEY_NAME="awst7545-mumbai"  # Your key pair name
+        SECURITY_GROUP="sg-014d30ace7995febb"  # Your security group
+        AMI_ID="ami-00bb6a80f01f03502"  # Example Ubuntu AMI
+        SUBNET_ID="subnet-0f2c630e7eee03e9f"  # Your subnet ID
 
         # Launch EC2 instance
         INSTANCE_ID=$(aws ec2 run-instances \
@@ -44,15 +45,14 @@ jobs:
           --query 'Instances[0].InstanceId')
 
         echo "EC2 instance launched with Instance ID: $INSTANCE_ID"
-        echo "::set-output name=instance_id::$INSTANCE_ID"
-        echo "::set-output name=ami_id::$AMI_ID"
 
-   # Step 2: Wait for EC2 instance to be running
+        # Export the instance ID as environment variable
+        echo "INSTANCE_ID=$INSTANCE_ID" >> $GITHUB_ENV
+        echo "AMI_ID=$AMI_ID" >> $GITHUB_ENV
+
+    # Step 4: Wait for EC2 instance to be running
     - name: Wait for EC2 instance to be running
       run: |
-        # Get the instance ID from the previous step's output
-        INSTANCE_ID="${{ steps.launch-instance.outputs.instance_id }}"
-
         INSTANCE_STATE=$(aws ec2 describe-instances \
           --instance-ids $INSTANCE_ID \
           --query 'Reservations[0].Instances[0].State.Name' \
@@ -60,7 +60,7 @@ jobs:
 
         while [[ "$INSTANCE_STATE" != "running" ]]; do
           echo "Waiting for EC2 instance to be running..."
-          sleep 90
+          sleep 60  # Sleep for a minute before checking again
           INSTANCE_STATE=$(aws ec2 describe-instances \
             --instance-ids $INSTANCE_ID \
             --query 'Reservations[0].Instances[0].State.Name' \
@@ -69,26 +69,22 @@ jobs:
 
         echo "EC2 instance is running."
 
+    # Step 5: Get EC2 Public IP
     - name: Get EC2 Public IP
       id: get-ip
       run: |
-        # Get the instance ID from the previous step's output
-        INSTANCE_ID="${{ steps.launch-instance.outputs.instance_id }}"
-
+        # Fetch the public IP address of the instance
         EC2_PUBLIC_IP=$(aws ec2 describe-instances \
           --instance-ids $INSTANCE_ID \
           --query 'Reservations[0].Instances[0].PublicIpAddress' \
           --output text)
+
         echo "EC2 Public IP: $EC2_PUBLIC_IP"
-        echo "::set-output name=public_ip::$EC2_PUBLIC_IP"
 
-    # - name: Install PostgreSQL client on EC2 instance
-    #   run: |
-    #     ssh -i /path/to/your/private-key.pem -o StrictHostKeyChecking=no ubuntu@${{ steps.get-ip.outputs.public_ip }} << 'EOF'
-    #       sudo apt-get update
-    #       sudo apt-get install -y postgresql-client
-    #     EOF
+        # Export the public IP to be used in later steps
+        echo "EC2_PUBLIC_IP=$EC2_PUBLIC_IP" >> $GITHUB_ENV
 
+    # Step 6: Install PostgreSQL client on EC2 instance
     - name: Install PostgreSQL client on EC2 instance
       run: |
         # Write the private key to a temporary file
@@ -96,25 +92,28 @@ jobs:
         chmod 600 private-key.pem  # Set appropriate permissions for the private key
 
         # Connect to EC2 instance via SSH and install PostgreSQL client
-        ssh -i private-key.pem -o StrictHostKeyChecking=no ubuntu@${{ steps.get-ip.outputs.public_ip }} << 'EOF'
+        ssh -i private-key.pem -o StrictHostKeyChecking=no ubuntu@$EC2_PUBLIC_IP << 'EOF'
           sudo apt-get update
           sudo apt-get install -y postgresql-client
         EOF
 
+    # Step 7: Connect to RDS from EC2
     - name: Connect to RDS from EC2
       run: |
         RDS_ENDPOINT="database-rds-pg.chuy4oakmwhu.ap-south-1.rds.amazonaws.com"
         RDS_DBNAME="postgres"
         RDS_USER="postgres"
-        RDS_PASSWORD="Roadtrip369"  # It's recommended to store this in a secret
+        RDS_PASSWORD="Roadtrip369"  # Store in secrets for better security
 
-        ssh -i private-key.pem -o StrictHostKeyChecking=no ubuntu@${{ steps.get-ip.outputs.public_ip }} << EOF
+        ssh -i private-key.pem -o StrictHostKeyChecking=no ubuntu@$EC2_PUBLIC_IP << EOF
           PGPASSWORD=$RDS_PASSWORD psql -h $RDS_ENDPOINT -U $RDS_USER -d $RDS_DBNAME -p 5432 -c "SELECT now();"
         EOF
 
-        # # Clean up the private key after use
+        # Clean up the private key after use
         # rm private-key.pem
 
+    # Step 8: Clean up (Optional: Terminate EC2 instance)
+    # Uncomment to terminate the EC2 instance after the tasks are done
     # - name: Clean up (Optional: Terminate EC2 instance)
     #   run: |
     #     aws ec2 terminate-instances --instance-ids $INSTANCE_ID
