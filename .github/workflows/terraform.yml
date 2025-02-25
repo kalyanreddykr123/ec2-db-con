@@ -32,82 +32,52 @@ jobs:
         AMI_ID="ami-00bb6a80f01f03502"  # Example Ubuntu AMI, change if needed
         SUBNET_ID="subnet-0f2c630e7eee03e9f"  # Change to your subnet ID
 
-        # Launch EC2 instance
-        INSTANCE_ID=$(aws ec2 run-instances \
-          --image-id $AMI_ID \
-          --count 1 \
-          --instance-type $INSTANCE_TYPE \
-          --key-name $KEY_NAME \
-          --security-group-ids $SECURITY_GROUP \
-          --subnet-id $SUBNET_ID \
-          --output text \
-          --query 'Instances[0].InstanceId')
+- name: Launch EC2 instance
+  id: launch-instance
+  run: |
+    INSTANCE_ID=$(aws ec2 run-instances \
+      --image-id $AMI_ID \
+      --instance-type $INSTANCE_TYPE \
+      --key-name $KEY_NAME \
+      --security-group-ids $SECURITY_GROUP \
+      --subnet-id $SUBNET_ID \
+      --query 'Instances[0].InstanceId' \
+      --output text)
+    echo "Launched EC2 instance with ID: $INSTANCE_ID"
+    echo "::set-output name=instance_id::$INSTANCE_ID"
 
-        echo "EC2 instance launched with Instance ID: $INSTANCE_ID"
+- name: Wait for EC2 instance to be running
+  run: |
+    INSTANCE_STATE=$(aws ec2 describe-instances \
+      --instance-ids ${{ steps.launch-instance.outputs.instance_id }} \
+      --query 'Reservations[0].Instances[0].State.Name' \
+      --output text)
 
+    while [[ "$INSTANCE_STATE" != "running" ]]; do
+      echo "Waiting for EC2 instance to be running..."
+      sleep 30  # Sleep time before checking again
+      INSTANCE_STATE=$(aws ec2 describe-instances \
+        --instance-ids ${{ steps.launch-instance.outputs.instance_id }} \
+        --query 'Reservations[0].Instances[0].State.Name' \
+        --output text)
+    done
 
-    - name: Wait for EC2 instance to be running
-      run: |
-        INSTANCE_STATE=$(aws ec2 describe-instances \
-          --instance-ids $INSTANCE_ID \
-          --query 'Reservations[0].Instances[0].State.Name' \
-          --output text)
+    echo "EC2 instance is running."
 
-        while [[ "$INSTANCE_STATE" != "running" ]]; do
-          echo "Waiting for EC2 instance to be running..."
-          sleep 90
-          INSTANCE_STATE=$(aws ec2 describe-instances \
-            --instance-ids $INSTANCE_ID \
-            --query 'Reservations[0].Instances[0].State.Name' \
-            --output text)
-        done
+- name: Debug EC2 Instance Details
+  run: |
+    aws ec2 describe-instances --instance-ids ${{ steps.launch-instance.outputs.instance_id }} \
+      --query 'Reservations[0].Instances[0].[InstanceId, PublicIpAddress, State.Name]' \
+      --output table
 
-        echo "EC2 instance is running."
+- name: Wait for EC2 instance to have a public IP
+  run: |
+    echo "Sleeping to allow public IP assignment..."
+    sleep 60  # Extra sleep to allow public IP assignment
+    EC2_PUBLIC_IP=$(aws ec2 describe-instances \
+      --instance-ids ${{ steps.launch-instance.outputs.instance_id }} \
+      --query 'Reservations[0].Instances[0].PublicIpAddress' \
+      --output text)
 
-    - name: Get EC2 Public IP
-      id: get-ip
-      run: |
-        EC2_PUBLIC_IP=$(aws ec2 describe-instances \
-          --instance-ids $INSTANCE_ID \
-          --query 'Reservations[0].Instances[0].PublicIpAddress' \
-          --output text)
-        echo "EC2 Public IP: $EC2_PUBLIC_IP"
-        echo "::set-output name=public_ip::$EC2_PUBLIC_IP"
-
-    # - name: Install PostgreSQL client on EC2 instance
-    #   run: |
-    #     ssh -i /path/to/your/private-key.pem -o StrictHostKeyChecking=no ubuntu@${{ steps.get-ip.outputs.public_ip }} << 'EOF'
-    #       sudo apt-get update
-    #       sudo apt-get install -y postgresql-client
-    #     EOF
-
-    - name: Install PostgreSQL client on EC2 instance
-      run: |
-        # Write the private key to a temporary file
-        echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > private-key.pem
-        chmod 600 private-key.pem  # Set appropriate permissions for the private key
-
-        # Connect to EC2 instance via SSH and install PostgreSQL client
-        ssh -i private-key.pem -o StrictHostKeyChecking=no ubuntu@${{ steps.get-ip.outputs.public_ip }} << 'EOF'
-          sudo apt-get update
-          sudo apt-get install -y postgresql-client
-        EOF
-
-    - name: Connect to RDS from EC2
-      run: |
-        RDS_ENDPOINT="database-rds-pg.chuy4oakmwhu.ap-south-1.rds.amazonaws.com"
-        RDS_DBNAME="postgres"
-        RDS_USER="postgres"
-        RDS_PASSWORD="Roadtrip369"  # It's recommended to store this in a secret
-
-        ssh -i private-key.pem -o StrictHostKeyChecking=no ubuntu@${{ steps.get-ip.outputs.public_ip }} << EOF
-          PGPASSWORD=$RDS_PASSWORD psql -h $RDS_ENDPOINT -U $RDS_USER -d $RDS_DBNAME -p 5432 -c "SELECT now();"
-        EOF
-
-        # # Clean up the private key after use
-        # rm private-key.pem
-
-    # - name: Clean up (Optional: Terminate EC2 instance)
-    #   run: |
-    #     aws ec2 terminate-instances --instance-ids $INSTANCE_ID
-    #     echo "EC2 instance terminated."
+    echo "EC2 Public IP: $EC2_PUBLIC_IP"
+    echo "::set-output name=public_ip::$EC2_PUBLIC_IP"
