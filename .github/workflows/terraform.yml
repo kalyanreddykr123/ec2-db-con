@@ -32,19 +32,32 @@ jobs:
         AMI_ID="ami-00bb6a80f01f03502"  # Example Ubuntu AMI, change if needed
         SUBNET_ID="subnet-0f2c630e7eee03e9f"  # Change to your subnet ID
 
-        # Launch EC2 instance
+        # # Launch EC2 instance
+        # INSTANCE_ID=$(aws ec2 run-instances \
+        #   --image-id $AMI_ID \
+        #   --count 1 \
+        #   --instance-type $INSTANCE_TYPE \
+        #   --key-name $KEY_NAME \
+        #   --security-group-ids $SECURITY_GROUP \
+        #   --subnet-id $SUBNET_ID \
+        #   --output text \
+        #   --query 'Instances[0].InstanceId')
+
+        # echo "EC2 instance launched with Instance ID: $INSTANCE_ID"
+
+    - name: Launch EC2 instance
+      id: launch-instance
+      run: |
         INSTANCE_ID=$(aws ec2 run-instances \
           --image-id $AMI_ID \
-          --count 1 \
           --instance-type $INSTANCE_TYPE \
           --key-name $KEY_NAME \
           --security-group-ids $SECURITY_GROUP \
           --subnet-id $SUBNET_ID \
-          --output text \
-          --query 'Instances[0].InstanceId')
-
-        echo "EC2 instance launched with Instance ID: $INSTANCE_ID"
-
+          --query 'Instances[0].InstanceId' \
+          --output text)
+        echo "Launched EC2 instance with ID: $INSTANCE_ID"
+        echo "::set-output name=instance_id::$INSTANCE_ID"
 
     - name: Wait for EC2 instance to be running
       run: |
