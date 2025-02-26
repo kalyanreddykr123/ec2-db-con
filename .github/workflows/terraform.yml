@@ -3,7 +3,7 @@ name: AWS EC2 Instance Setup and Connect to RDS
 on:
   push:
     branches:
-      - main  # Trigger on main branch push
+      - main1  # Trigger on main branch push
 
 jobs:
   deploy:
@@ -120,5 +120,6 @@ jobs:
 
         echo "Instance state $INSTANCE_STATE"
         echo "InstanceID is $INSTANCE_ID"
+        echo "Instance public ip is $EC2_PUBLIC_IP"
         aws ec2 terminate-instances --instance-ids $INSTANCE_ID
 
