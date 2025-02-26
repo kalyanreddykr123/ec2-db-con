@@ -93,15 +93,15 @@ jobs:
     # Step 7: Connect to RDS from EC2
     - name: Connect to RDS from EC2
       run: |
-        RDS_ENDPOINT="database-rds-pg.chuy4oakmwhu.ap-south-1.rds.amazonaws.com"
-        RDS_DBNAME="postgres"
-        RDS_USER="postgres"
-        RDS_PASSWORD="Roadtrip369"  # Store in secrets for better security
-
         # RDS_ENDPOINT="database-rds-pg.chuy4oakmwhu.ap-south-1.rds.amazonaws.com"
-        # RDS_DBNAME="${{ secrets.RDS_DBNAME }}"
-        # RDS_USER="${{ secrets.RDS_USER }}"
-        # RDS_PASSWORD="${{ secrets.RDS_PASSWORD }}"
+        # RDS_DBNAME="postgres"
+        # RDS_USER="postgres"
+        # RDS_PASSWORD="Roadtrip369"  # Store in secrets for better security
+
+        RDS_ENDPOINT="database-rds-pg.chuy4oakmwhu.ap-south-1.rds.amazonaws.com"
+        RDS_DBNAME="${{ secrets.RDS_DBNAME }}"
+        RDS_USER="${{ secrets.RDS_USER }}"
+        RDS_PASSWORD="${{ secrets.RDS_PASSWORD }}"
         
         ssh -i private-key.pem -o StrictHostKeyChecking=no ubuntu@$EC2_PUBLIC_IP << EOF
           set -x
