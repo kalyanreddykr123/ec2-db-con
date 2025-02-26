@@ -110,3 +110,12 @@ jobs:
         EOF
         # Clean up the private key after use
         # rm private-key.pem
+
+    - name: Wait for EC2 instance to be running
+      run: |
+        INSTANCE_STATE=$(aws ec2 describe-instances \
+          --instance-ids $INSTANCE_ID \
+          --query 'Reservations[0].Instances[0].State.Name' \
+          --output text)
+
+        echo "Instance state $INSTANCE_STATE"
