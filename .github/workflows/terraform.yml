@@ -46,6 +46,7 @@ jobs:
         # Export the instance ID as environment variable
         echo "INSTANCE_ID=$INSTANCE_ID" >> $GITHUB_ENV
         echo "AMI_ID=$AMI_ID" >> $GITHUB_ENV
+
     # Step 4: Wait for EC2 instance to be running
     - name: Wait for EC2 instance to be running
       run: |
@@ -62,6 +63,7 @@ jobs:
             --output text)
         done
         echo "EC2 instance is running."
+
     # Step 5: Get EC2 Public IP
     - name: Get EC2 Public IP
       id: get-ip
@@ -74,6 +76,7 @@ jobs:
         echo "EC2 Public IP: $EC2_PUBLIC_IP"
         # Export the public IP to be used in later steps
         echo "EC2_PUBLIC_IP=$EC2_PUBLIC_IP" >> $GITHUB_ENV
+
     # Step 6: Install PostgreSQL client on EC2 instance
     - name: Install PostgreSQL client on EC2 instance
       run: |
@@ -86,17 +89,20 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y postgresql-client
         EOF
+
     # Step 7: Connect to RDS from EC2
     - name: Connect to RDS from EC2
       run: |
-        # RDS_ENDPOINT="database-rds-pg.chuy4oakmwhu.ap-south-1.rds.amazonaws.com"
-        # RDS_DBNAME="postgres"
-        # RDS_USER="postgres"
-        # RDS_PASSWORD="Roadtrip369"  # Store in secrets for better security
         RDS_ENDPOINT="database-rds-pg.chuy4oakmwhu.ap-south-1.rds.amazonaws.com"
-        RDS_DBNAME="${{ secrets.RDS_DBNAME }}"
-        RDS_USER="${{ secrets.RDS_USER }}"
-        RDS_PASSWORD="${{ secrets.RDS_PASSWORD }}"  # Store in secrets for better security
+        RDS_DBNAME="postgres"
+        RDS_USER="postgres"
+        RDS_PASSWORD="Roadtrip369"  # Store in secrets for better security
+
+        # RDS_ENDPOINT="database-rds-pg.chuy4oakmwhu.ap-south-1.rds.amazonaws.com"
+        # RDS_DBNAME="${{ secrets.RDS_DBNAME }}"
+        # RDS_USER="${{ secrets.RDS_USER }}"
+        # RDS_PASSWORD="${{ secrets.RDS_PASSWORD }}"
+        
         ssh -i private-key.pem -o StrictHostKeyChecking=no ubuntu@$EC2_PUBLIC_IP << EOF
           set -x
           PGPASSWORD=$RDS_PASSWORD psql -h $RDS_ENDPOINT -U $RDS_USER -d $RDS_DBNAME -p 5432 -c "SELECT version();"
