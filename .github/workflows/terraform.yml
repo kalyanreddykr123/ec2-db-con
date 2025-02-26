@@ -32,7 +32,6 @@ jobs:
         SECURITY_GROUP="sg-014d30ace7995febb"  # Your security group
         AMI_ID="ami-00bb6a80f01f03502"  # Example Ubuntu AMI
         SUBNET_ID="subnet-0f2c630e7eee03e9f"  # Your subnet ID
-
         # Launch EC2 instance
         INSTANCE_ID=$(aws ec2 run-instances \
           --image-id $AMI_ID \
@@ -43,13 +42,10 @@ jobs:
           --subnet-id $SUBNET_ID \
           --output text \
           --query 'Instances[0].InstanceId')
-
         echo "EC2 instance launched with Instance ID: $INSTANCE_ID"
-
         # Export the instance ID as environment variable
         echo "INSTANCE_ID=$INSTANCE_ID" >> $GITHUB_ENV
         echo "AMI_ID=$AMI_ID" >> $GITHUB_ENV
-
     # Step 4: Wait for EC2 instance to be running
     - name: Wait for EC2 instance to be running
       run: |
@@ -57,7 +53,6 @@ jobs:
           --instance-ids $INSTANCE_ID \
           --query 'Reservations[0].Instances[0].State.Name' \
           --output text)
-
         while [[ "$INSTANCE_STATE" != "running" ]]; do
           echo "Waiting for EC2 instance to be running..."
           sleep 60  # Sleep for a minute before checking again
@@ -66,9 +61,7 @@ jobs:
             --query 'Reservations[0].Instances[0].State.Name' \
             --output text)
         done
-
         echo "EC2 instance is running."
-
     # Step 5: Get EC2 Public IP
     - name: Get EC2 Public IP
       id: get-ip
@@ -78,34 +71,32 @@ jobs:
           --instance-ids $INSTANCE_ID \
           --query 'Reservations[0].Instances[0].PublicIpAddress' \
           --output text)
-
         echo "EC2 Public IP: $EC2_PUBLIC_IP"
-
         # Export the public IP to be used in later steps
         echo "EC2_PUBLIC_IP=$EC2_PUBLIC_IP" >> $GITHUB_ENV
-
     # Step 6: Install PostgreSQL client on EC2 instance
     - name: Install PostgreSQL client on EC2 instance
       run: |
         # Write the private key to a temporary file
         echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > private-key.pem
         chmod 600 private-key.pem  # Set appropriate permissions for the private key
-
         # Connect to EC2 instance via SSH and install PostgreSQL client
         ssh -i private-key.pem -o StrictHostKeyChecking=no ubuntu@$EC2_PUBLIC_IP << 'EOF'
           set -x
           sudo apt-get update
           sudo apt-get install -y postgresql-client
         EOF
-
     # Step 7: Connect to RDS from EC2
     - name: Connect to RDS from EC2
       run: |
+        # RDS_ENDPOINT="database-rds-pg.chuy4oakmwhu.ap-south-1.rds.amazonaws.com"
+        # RDS_DBNAME="postgres"
+        # RDS_USER="postgres"
+        # RDS_PASSWORD="Roadtrip369"  # Store in secrets for better security
         RDS_ENDPOINT="database-rds-pg.chuy4oakmwhu.ap-south-1.rds.amazonaws.com"
         RDS_DBNAME="${{ secrets.RDS_DBNAME }}"
         RDS_USER="${{ secrets.RDS_USER }}"
         RDS_PASSWORD="${{ secrets.RDS_PASSWORD }}"  # Store in secrets for better security
-
         ssh -i private-key.pem -o StrictHostKeyChecking=no ubuntu@$EC2_PUBLIC_IP << EOF
           set -x
           PGPASSWORD=$RDS_PASSWORD psql -h $RDS_ENDPOINT -U $RDS_USER -d $RDS_DBNAME -p 5432 -c "SELECT version();"
@@ -116,32 +107,5 @@ jobs:
           PGPASSWORD=$RDS_PASSWORD psql -h $RDS_ENDPOINT -U $RDS_USER -d $RDS_DBNAME -p 5432 -c "DROP DATABASE newdb202502261224;"
           PGPASSWORD=$RDS_PASSWORD psql -h $RDS_ENDPOINT -U $RDS_USER -d $RDS_DBNAME -p 5432 -t -A -c "\l"
         EOF
-
         # Clean up the private key after use
         # rm private-key.pem
-
-    # # Step 8: Clean up (Optional: Terminate EC2 instance)
-    # - name: Clean up (Optional: Terminate EC2 instance)
-    #   run: |
-    #     aws ec2 terminate-instances --instance-ids $INSTANCE_ID
-    #     echo "EC2 instance terminated."
-
-    # - name: Clean up (Optional: Terminate EC2 instance)
-    #   run: |
-    #     aws ec2 terminate-instances --instance-ids $INSTANCE_ID
-    #     echo "EC2 instance terminated."
-
-      - name: Terminate EC2
-        run: |
-          # INSTANCE_ID=$(aws ec2 describe-instances --query "Reservations[0].Instances[0].InstanceId" --output text)
-          INSTANCE_STATE=$(aws ec2 describe-instances \
-            --instance-ids $INSTANCE_ID \
-            --query 'Reservations[0].Instances[0].State.Name' \
-            --output text)
-
-          if [ -n "$INSTANCE_ID" ]; then
-            aws ec2 terminate-instances --instance-ids $INSTANCE_ID
-            echo "EC2 instance terminated."
-          else
-            echo "No instance found to terminate."
-          fi
