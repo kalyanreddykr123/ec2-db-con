@@ -1,4 +1,4 @@
-name: AWS EC2 Instance Setup and Connect to RDS
+name: test1
 
 on:
   push:
