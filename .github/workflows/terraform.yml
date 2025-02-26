@@ -120,3 +120,5 @@ jobs:
 
         echo "Instance state $INSTANCE_STATE"
         echo "InstanceID is $INSTANCE_ID"
+        aws ec2 terminate-instances --instance-ids $INSTANCE_ID
+
