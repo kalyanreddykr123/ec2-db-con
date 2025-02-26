@@ -120,8 +120,8 @@ jobs:
         # Clean up the private key after use
         # rm private-key.pem
 
-    # Step 8: Clean up (Optional: Terminate EC2 instance)
-    - name: Clean up (Optional: Terminate EC2 instance)
-      run: |
-        aws ec2 terminate-instances --instance-ids $INSTANCE_ID
-        echo "EC2 instance terminated."
+    # # Step 8: Clean up (Optional: Terminate EC2 instance)
+    # - name: Clean up (Optional: Terminate EC2 instance)
+    #   run: |
+    #     aws ec2 terminate-instances --instance-ids $INSTANCE_ID
+    #     echo "EC2 instance terminated."
