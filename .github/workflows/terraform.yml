@@ -125,3 +125,8 @@ jobs:
     #   run: |
     #     aws ec2 terminate-instances --instance-ids $INSTANCE_ID
     #     echo "EC2 instance terminated."
+
+    - name: Clean up (Optional: Terminate EC2 instance)
+      run: |
+        aws ec2 terminate-instances --instance-ids $INSTANCE_ID
+        echo "EC2 instance terminated."
