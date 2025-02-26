@@ -3,7 +3,7 @@ name: test1
 on:
   push:
     branches:
-      - main  # Trigger on main branch push
+      - main  # Trigger on main branch push 
 
 jobs:
   deploy:
