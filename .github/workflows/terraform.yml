@@ -101,11 +101,6 @@ jobs:
     # Step 7: Connect to RDS from EC2
     - name: Connect to RDS from EC2
       run: |
-        # RDS_ENDPOINT="database-rds-pg.chuy4oakmwhu.ap-south-1.rds.amazonaws.com"
-        # RDS_DBNAME="postgres"
-        # RDS_USER="postgres"
-        # RDS_PASSWORD="Roadtrip369"  # Store in secrets for better security
-
         RDS_ENDPOINT="database-rds-pg.chuy4oakmwhu.ap-south-1.rds.amazonaws.com"
         RDS_DBNAME="${{ secrets.RDS_DBNAME }}"
         RDS_USER="${{ secrets.RDS_USER }}"
@@ -135,3 +130,18 @@ jobs:
     #   run: |
     #     aws ec2 terminate-instances --instance-ids $INSTANCE_ID
     #     echo "EC2 instance terminated."
+
+      - name: Terminate EC2
+        run: |
+          # INSTANCE_ID=$(aws ec2 describe-instances --query "Reservations[0].Instances[0].InstanceId" --output text)
+          INSTANCE_STATE=$(aws ec2 describe-instances \
+            --instance-ids $INSTANCE_ID \
+            --query 'Reservations[0].Instances[0].State.Name' \
+            --output text)
+
+          if [ -n "$INSTANCE_ID" ]; then
+            aws ec2 terminate-instances --instance-ids $INSTANCE_ID
+            echo "EC2 instance terminated."
+          else
+            echo "No instance found to terminate."
+          fi
